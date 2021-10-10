@@ -1,10 +1,10 @@
-add_library(licenseman)
+add_library(licensecore)
 
-target_include_directories(licenseman
+target_include_directories(licensecore
 PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 add_subdirectory(crypto)
 
-target_link_libraries(licenseman PRIVATE mbedcrypto)
+target_link_libraries(licensecore PRIVATE mbedcrypto)
