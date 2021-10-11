@@ -6,7 +6,7 @@
 #include "error.hpp"
 
 namespace licenseman {
-namespace PK {
+namespace pk {
 
 class Signer {
 private:
@@ -57,7 +57,7 @@ public:
 
         signature.resize(olen);
         signature.shrink_to_fit();
-        return std::move(signature);
+        return signature;
     }
 
     ~Signer() noexcept {
@@ -123,5 +123,5 @@ bool verify(const buffer &content, const buffer &signature, const fs::path &publ
     return verifier.verify(content, signature);
 }
 
-} // namespace PK
+} // namespace pk
 } // namespace licenseman

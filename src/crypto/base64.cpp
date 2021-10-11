@@ -7,14 +7,14 @@
 
 namespace licenseman {
 
-namespace Base64 {
+namespace base64 {
 
 buffer encode(const buffer &content) {
     size_t olen = 0;
     mbedtls_base64_encode(nullptr, 0, &olen, content.data(), content.size());
     buffer out(olen, 0);
     mbedtls_base64_encode(out.data(), out.size(), &olen, content.data(), content.size());
-    return std::move(out);
+    return out;
 }
 
 buffer decode(const buffer &content) {
@@ -28,6 +28,6 @@ buffer decode(const buffer &content) {
     return out;
 }
 
-} // namespace Base64
+} // namespace base64
 
 } // namespace licenseman

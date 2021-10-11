@@ -4,12 +4,12 @@
 
 namespace licenseman {
 
-namespace Base64 {
+namespace base64 {
 
 buffer encode(const buffer &content);
 
 buffer decode(const buffer &content);
 
-} // namespace Base64
+} // namespace base64
 
 } // namespace licenseman
