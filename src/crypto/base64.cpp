@@ -5,11 +5,9 @@
 
 #include "error.hpp"
 
-namespace licenseman {
+namespace licenseman::base64 {
 
-namespace base64 {
-
-buffer encode(const buffer &content) {
+auto encode(const buffer &content) -> buffer {
     size_t olen = 0;
     mbedtls_base64_encode(nullptr, 0, &olen, content.data(), content.size());
     buffer out(olen, 0);
@@ -18,7 +16,7 @@ buffer encode(const buffer &content) {
     return out;
 }
 
-buffer decode(const buffer &content) {
+auto decode(const buffer &content) -> buffer {
     size_t olen = 0;
     int    err = mbedtls_base64_decode(nullptr, 0, &olen, content.data(), content.size());
     if (err == MBEDTLS_ERR_BASE64_INVALID_CHARACTER) {
@@ -29,6 +27,4 @@ buffer decode(const buffer &content) {
     return out;
 }
 
-} // namespace base64
-
-} // namespace licenseman
+} // namespace licenseman::base64

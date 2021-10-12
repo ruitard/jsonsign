@@ -1,0 +1,26 @@
+Checks: >
+  -*,
+  #bugprone-*,
+  cert-*,
+  clang-analyzer-*,
+  clang-diagnostic-*,
+  concurrency-*,
+  cppcoreguidelines-*,
+  google-*,
+  modernize-*,
+  misc-*
+  performance-*,
+  readability-*,
+
+  -cppcoreguidelines-avoid-magic-numbers,
+  -cppcoreguidelines-prefer-member-initializer,
+  -cppcoreguidelines-pro-type-member-init,
+  -cppcoreguidelines-pro-type-vararg,
+  -readability-magic-numbers
+
+WarningsAsErrors: ''
+FormatStyle: none
+
+CheckOptions:
+  - key:             modernize-loop-convert.NamingStyle
+    value:           CamelCase
