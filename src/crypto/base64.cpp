@@ -14,6 +14,7 @@ buffer encode(const buffer &content) {
     mbedtls_base64_encode(nullptr, 0, &olen, content.data(), content.size());
     buffer out(olen, 0);
     mbedtls_base64_encode(out.data(), out.size(), &olen, content.data(), content.size());
+    out.resize(olen);
     return out;
 }
 
