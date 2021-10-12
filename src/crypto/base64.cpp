@@ -1,8 +1,6 @@
 #include <mbedtls/base64.h>
-#include <string_view>
 
 #include "base64.hpp"
-
 #include "error.hpp"
 
 namespace licenseman::base64 {

@@ -1,6 +1,5 @@
 Checks: >
   -*,
-  #bugprone-*,
   cert-*,
   clang-analyzer-*,
   clang-diagnostic-*,
@@ -8,7 +7,7 @@ Checks: >
   cppcoreguidelines-*,
   google-*,
   modernize-*,
-  misc-*
+  misc-*,
   performance-*,
   readability-*,
 

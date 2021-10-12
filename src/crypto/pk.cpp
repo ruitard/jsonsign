@@ -83,21 +83,19 @@ public:
     auto operator=(Verifier &&) -> Verifier & = delete;
 
     void load_key(const buffer &public_key) {
-        int err = 0;
-        err = mbedtls_pk_parse_public_key(&pk, public_key.data(), public_key.size());
+        int err = mbedtls_pk_parse_public_key(&pk, public_key.data(), public_key.size());
         handle_mbedtls_error(err);
     }
 
     void load_key(const fs::path &public_keyfile) {
-        int err = 0;
-        err = mbedtls_pk_parse_public_keyfile(&pk, public_keyfile.c_str());
+        int err = mbedtls_pk_parse_public_keyfile(&pk, public_keyfile.c_str());
         handle_mbedtls_error(err);
     }
 
     auto verify(const buffer &content, const buffer &signature) -> bool {
-        int           err = 0;
         std::array<unsigned char, 32> hash{};
-        err = mbedtls_md(mbedtls_md_info_from_type(MBEDTLS_MD_SHA256), content.data(), content.size(), hash.data());
+
+        int err = mbedtls_md(mbedtls_md_info_from_type(MBEDTLS_MD_SHA256), content.data(), content.size(), hash.data());
         handle_mbedtls_error(err);
 
         return (mbedtls_pk_verify(&pk, MBEDTLS_MD_SHA256, hash.data(), 0, signature.data(), signature.size()) == 0);
