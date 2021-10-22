@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <iomanip>
 
 #include <CLI/App.hpp>
 #include <CLI/Config.hpp>
@@ -19,6 +20,20 @@ static std::string version;
 static std::string licensee;
 
 static nlohmann::ordered_json root;
+
+static std::time_t date_str2time(const std::string &date) {
+    std::tm                   tm{0};
+    static std::istringstream iss;
+    iss.clear();
+    iss.str(date);
+    if (!(iss >> std::get_time(&tm, "%Y-%m-%d"))) {
+        throw std::invalid_argument("get_time");
+    }
+    if (!iss.eof()) {
+        throw std::invalid_argument("get_time");
+    }
+    return std::mktime(&tm);
+}
 
 static licenseman::buffer license_content_join() {
     licenseman::buffer content;
@@ -48,6 +63,12 @@ static void sign_license_key() {
         std::cout << root.dump(4) << std::endl;
     } else {
         // write file
+        std::ofstream ofs(license_file);
+        if (!ofs.is_open()) {
+            throw std::runtime_error("license-key file save error.");
+        }
+        auto content = root.dump(4);
+        ofs.write(content.c_str(), content.length());
     }
 }
 
@@ -61,6 +82,15 @@ static bool verify_license_key(const nlohmann::ordered_json &json) {
 
     licenseman::buffer content = license_content_join();
     std::string        signature = root["signature"];
+
+    std::time_t issue_time = date_str2time(issue_date);
+    std::time_t expiry_time = date_str2time(expiry_date);
+    std::time_t now = std::time(nullptr);
+    bool        is_license_valid = issue_time <= now && now <= expiry_time;
+    if (!is_license_valid) {
+        // license valid period expired.
+        return false;
+    }
 
     return licenseman::pk::verify(
         content, licenseman::base64::decode(licenseman::buffer(signature.begin(), signature.end())), pubkey);
@@ -93,6 +123,9 @@ int main(int argc, const char *argv[]) {
     CLI11_PARSE(app, argc, argv);
 
     if (app.got_subcommand("sign")) {
+        std::time_t issue_time = date_str2time(issue_date);
+        std::time_t expiry_time = date_str2time(issue_date);
+        require(issue_time != -1 && expiry_time != -1, "parse date error");
         sign_license_key();
     }
 
