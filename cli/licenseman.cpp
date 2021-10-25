@@ -88,7 +88,7 @@ static bool verify_license_key(const nlohmann::ordered_json &json) {
     std::time_t now = std::time(nullptr);
     bool        is_license_valid = issue_time <= now && now <= expiry_time;
     if (!is_license_valid) {
-        // license valid period expired.
+        std::cout << "Warning: license valid period expired." << std::endl;
         return false;
     }
 
@@ -106,6 +106,8 @@ int main(int argc, const char *argv[]) {
     CLI::App app; // message
 
     app.require_subcommand(1, 1);
+
+    auto generate_cmd = app.add_subcommand("generate-key-pair");
 
     auto sign_cmd = app.add_subcommand("sign");
     sign_cmd->add_option("--issue-date", issue_date, "issue date")->required();
@@ -142,7 +144,21 @@ int main(int argc, const char *argv[]) {
         require(root.contains("version"), "version");
         require(root.contains("licensee"), "licensee");
         require(root.contains("signature"), "signature");
-        std::cout << std::boolalpha << verify_license_key(root) << std::endl;
+        if (verify_license_key(root)) {
+            std::cout << "- The signatures were verified against the specified public key" << std::endl;
+        }
+    }
+
+    if (app.got_subcommand("generate-key-pair")) {
+        std::string key;
+        std::string public_key;
+        licenseman::pk::rsa::gen_key_pair(key, public_key);
+        if (std::ofstream ofs{"rsa.key"}; ofs.is_open()) {
+            ofs.write(key.c_str(), key.length());
+        }
+        if (std::ofstream ofs{"rsa.pub"}; ofs.is_open()) {
+            ofs.write(public_key.c_str(), public_key.length());
+        }
     }
 
     return 0;

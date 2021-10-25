@@ -128,4 +128,40 @@ auto verify(const buffer &content, const buffer &signature, const fs::path &publ
     return verifier.verify(content, signature);
 }
 
+namespace rsa {
+
+void gen_key_pair(std::string &key, std::string &public_key) {
+    mbedtls_pk_context       pk;
+    mbedtls_entropy_context  entropy;
+    mbedtls_ctr_drbg_context ctr_drbg;
+
+    mbedtls_ctr_drbg_init(&ctr_drbg);
+    mbedtls_pk_init(&pk);
+    mbedtls_entropy_init(&entropy);
+
+    int ret = 0;
+    ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, nullptr, 0);
+    handle_mbedtls_error(ret);
+
+    ret = mbedtls_pk_setup(&pk, mbedtls_pk_info_from_type(MBEDTLS_PK_RSA));
+    handle_mbedtls_error(ret);
+
+    ret = mbedtls_rsa_gen_key(mbedtls_pk_rsa(pk), mbedtls_ctr_drbg_random, &ctr_drbg, 4096, 65537);
+    handle_mbedtls_error(ret);
+
+    buffer key_buffer(4096, 0);
+    ret = mbedtls_pk_write_key_pem(&pk, key_buffer.data(), key_buffer.size());
+    handle_mbedtls_error(ret);
+    key = std::string(reinterpret_cast<char *>(key_buffer.data()));
+
+    ret = mbedtls_pk_write_pubkey_pem(&pk, key_buffer.data(), key_buffer.size());
+    handle_mbedtls_error(ret);
+    public_key = std::string(reinterpret_cast<char *>(key_buffer.data()));
+
+    mbedtls_pk_free(&pk);
+    mbedtls_ctr_drbg_free(&ctr_drbg);
+    mbedtls_entropy_free(&entropy);
+}
+} // namespace rsa
+
 } // namespace licenseman::pk

@@ -5,18 +5,22 @@ Checks: >
   clang-diagnostic-*,
   concurrency-*,
   cppcoreguidelines-*,
+  -cppcoreguidelines-init-variables,
+  -cppcoreguidelines-avoid-non-const-global-variables,
+  -cppcoreguidelines-pro-type-reinterpret-cast,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -cppcoreguidelines-prefer-member-initializer,
+  -cppcoreguidelines-pro-type-member-init,
+  -cppcoreguidelines-pro-type-vararg,
+
   google-*,
   modernize-*,
   -modernize-use-trailing-return-type,
   misc-*,
   performance-*,
   readability-*,
-
-  -cppcoreguidelines-avoid-magic-numbers,
-  -cppcoreguidelines-prefer-member-initializer,
-  -cppcoreguidelines-pro-type-member-init,
-  -cppcoreguidelines-pro-type-vararg,
-  -readability-magic-numbers
+  -readability-magic-numbers,
+  -readability-identifier-length
 
 WarningsAsErrors: ''
 FormatStyle: none
