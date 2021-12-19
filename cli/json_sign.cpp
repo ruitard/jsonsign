@@ -107,9 +107,7 @@ int main(int argc, const char *argv[]) {
     }
 
     if (app.got_subcommand("generate-key-pair")) {
-        std::string key;
-        std::string public_key;
-        keycore::pk::rsa::gen_key_pair(key, public_key);
+        const auto &[key, public_key] = keycore::pk::rsa::gen_key_pair();
         if (std::ofstream ofs{"jsign.key"}; ofs.is_open()) {
             ofs.write(key.c_str(), key.length());
             std::cout << "Private key written to jsign.key" << std::endl;
