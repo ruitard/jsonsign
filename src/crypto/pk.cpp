@@ -23,8 +23,8 @@ public:
     }
     Signer(const Signer &) = delete;
     Signer(Signer &&) = delete;
-    auto operator=(const Signer &) -> Signer & = delete;
-    auto operator=(Signer &&) -> Signer & = delete;
+    Signer &operator=(const Signer &) = delete;
+    Signer &operator=(Signer &&) = delete;
 
     void load_key(const fs::path &private_keyfile) {
         int err = 0;
@@ -34,10 +34,10 @@ public:
         handle_mbedtls_error(err);
     }
 
-    auto sign(const buffer &content) -> buffer {
-        size_t        olen = 0;
+    buffer sign(const buffer &content) {
+        size_t                        olen = 0;
         std::array<unsigned char, 32> hash{};
-        buffer        signature(MBEDTLS_PK_SIGNATURE_MAX_SIZE, 0);
+        buffer                        signature(MBEDTLS_PK_SIGNATURE_MAX_SIZE, 0);
 
         int err = 0;
         err = mbedtls_md(mbedtls_md_info_from_type(MBEDTLS_MD_SHA256), content.data(), content.size(), hash.data());
@@ -66,15 +66,15 @@ public:
     Verifier() noexcept { mbedtls_pk_init(&pk); }
     Verifier(const Verifier &) = delete;
     Verifier(Verifier &&) = delete;
-    auto operator=(const Verifier &) -> Verifier & = delete;
-    auto operator=(Verifier &&) -> Verifier & = delete;
+    Verifier &operator=(const Verifier &) = delete;
+    Verifier &operator=(Verifier &&) = delete;
 
     void load_key(const fs::path &public_keyfile) {
         int err = mbedtls_pk_parse_public_keyfile(&pk, public_keyfile.c_str());
         handle_mbedtls_error(err);
     }
 
-    auto verify(const buffer &content, const buffer &signature) -> bool {
+    bool verify(const buffer &content, const buffer &signature) {
         std::array<unsigned char, 32> hash{};
 
         int err = mbedtls_md(mbedtls_md_info_from_type(MBEDTLS_MD_SHA256), content.data(), content.size(), hash.data());
@@ -86,13 +86,13 @@ public:
     ~Verifier() noexcept { mbedtls_pk_free(&pk); }
 };
 
-auto sign(const buffer &content, const fs::path &private_keyfile) -> buffer {
+buffer sign(const buffer &content, const fs::path &private_keyfile) {
     Signer signer;
     signer.load_key(private_keyfile);
     return signer.sign(content);
 }
 
-auto verify(const buffer &content, const buffer &signature, const fs::path &public_keyfile) -> bool {
+bool verify(const buffer &content, const buffer &signature, const fs::path &public_keyfile) {
     Verifier verifier;
     verifier.load_key(public_keyfile);
     return verifier.verify(content, signature);
