@@ -14,7 +14,7 @@ PRIVATE
 
 target_link_libraries(jsign
 PRIVATE
-    licensecore
+    keycore
     CLI11::CLI11
     nlohmann_json::nlohmann_json
 )

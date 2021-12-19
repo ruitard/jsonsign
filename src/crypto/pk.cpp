@@ -7,7 +7,7 @@
 #include "pk.hpp"
 #include "error.hpp"
 
-namespace licenseman::pk {
+namespace keycore::pk {
 
 class Signer {
 private:
@@ -134,4 +134,4 @@ void gen_key_pair(std::string &key, std::string &public_key) {
 }
 } // namespace rsa
 
-} // namespace licenseman::pk
+} // namespace keycore::pk

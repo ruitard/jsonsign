@@ -7,7 +7,7 @@
 #include <CLI/Formatter.hpp>
 #include <nlohmann/json.hpp>
 
-#include "licenseman.hpp"
+#include "keycore.hpp"
 
 namespace fs = std::filesystem;
 
@@ -32,7 +32,7 @@ static inline void parse_json_file(const std::string &jsonfile) {
     }
 }
 
-static licenseman::buffer json_content_join(const nlohmann::ordered_json &json_root) {
+static keycore::buffer json_content_join(const nlohmann::ordered_json &json_root) {
     std::string content = json_root.dump();
     return {content.begin(), content.end()};
 }
@@ -44,9 +44,9 @@ static void sign_json_file() {
     parse_json_file(json_file);
     require(!root.contains("signature"), "the json file already has a signature");
 
-    licenseman::buffer content = json_content_join(root);
+    keycore::buffer content = json_content_join(root);
 
-    licenseman::buffer signature = licenseman::base64::encode(licenseman::pk::sign(content, prikey));
+    keycore::buffer signature = keycore::base64::encode(keycore::pk::sign(content, prikey));
     root["signature"] = std::string(reinterpret_cast<char *>(signature.data()), signature.size());
     const auto result = root.dump(4);
     if (signed_json_file.empty()) {
@@ -68,10 +68,10 @@ static bool verify_json_file() {
     require(root.contains("signature"), "the json file doesn't have a signature");
     std::string signature = root["signature"];
     root.erase("signature");
-    licenseman::buffer content = json_content_join(root);
+    keycore::buffer content = json_content_join(root);
 
-    return licenseman::pk::verify(
-        content, licenseman::base64::decode(licenseman::buffer(signature.begin(), signature.end())), pubkey);
+    return keycore::pk::verify(content, keycore::base64::decode(keycore::buffer(signature.begin(), signature.end())),
+                               pubkey);
 }
 
 int main(int argc, const char *argv[]) {
@@ -107,7 +107,7 @@ int main(int argc, const char *argv[]) {
     if (app.got_subcommand("generate-key-pair")) {
         std::string key;
         std::string public_key;
-        licenseman::pk::rsa::gen_key_pair(key, public_key);
+        keycore::pk::rsa::gen_key_pair(key, public_key);
         if (std::ofstream ofs{"jsign.key"}; ofs.is_open()) {
             ofs.write(key.c_str(), key.length());
             std::cout << "Private key written to jsign.key" << std::endl;

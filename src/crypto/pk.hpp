@@ -2,7 +2,7 @@
 
 #include "define.hpp"
 
-namespace licenseman {
+namespace keycore {
 
 namespace pk {
 
@@ -16,4 +16,4 @@ void gen_key_pair(std::string &key, std::string &public_key);
 
 } // namespace pk
 
-} // namespace licenseman
+} // namespace keycore

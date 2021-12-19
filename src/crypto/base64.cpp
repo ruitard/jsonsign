@@ -3,7 +3,7 @@
 #include "base64.hpp"
 #include "error.hpp"
 
-namespace licenseman::base64 {
+namespace keycore::base64 {
 
 auto encode(const buffer &content) -> buffer {
     size_t olen = 0;
@@ -25,4 +25,4 @@ auto decode(const buffer &content) -> buffer {
     return out;
 }
 
-} // namespace licenseman::base64
+} // namespace keycore::base64

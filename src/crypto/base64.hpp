@@ -2,7 +2,7 @@
 
 #include "define.hpp"
 
-namespace licenseman {
+namespace keycore {
 
 namespace base64 {
 
@@ -12,4 +12,4 @@ buffer decode(const buffer &content);
 
 } // namespace base64
 
-} // namespace licenseman
+} // namespace keycore

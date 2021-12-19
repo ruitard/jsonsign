@@ -4,7 +4,7 @@
 
 #include <mbedtls/error.h>
 
-namespace licenseman {
+namespace keycore {
 
 inline void handle_mbedtls_error(int error_code) {
     if (error_code == 0) {
