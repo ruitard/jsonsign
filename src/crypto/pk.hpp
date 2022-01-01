@@ -15,6 +15,10 @@ namespace rsa {
 std::tuple<std::string, std::string> gen_key_pair();
 }
 
+namespace ecdsa {
+std::tuple<std::string, std::string> gen_key_pair();
+}
+
 } // namespace pk
 
 } // namespace keycore
