@@ -3,14 +3,6 @@ find_package(CLI11 REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 
 add_executable(jsign json_sign.cpp)
-target_precompile_headers(jsign
-PRIVATE
-    <iostream>
-    <CLI/App.hpp>
-    <CLI/Config.hpp>
-    <CLI/Formatter.hpp>
-    <nlohmann/json.hpp>
-)
 
 target_link_libraries(jsign
 PRIVATE

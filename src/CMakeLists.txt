@@ -1,5 +1,11 @@
 add_library(keycore)
 
+target_sources(keycore
+PRIVATE
+    define.hpp
+    keycore.hpp
+)
+
 target_include_directories(keycore
 PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
