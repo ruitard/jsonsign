@@ -98,11 +98,9 @@ bool verify(const buffer &content, const buffer &signature, const fs::path &publ
     return verifier.verify(content, signature);
 }
 
-namespace rsa {
-
 class KeyPair {
 private:
-    mbedtls_pk_context       pk;
+    mbedtls_pk_context       ctx;
     mbedtls_entropy_context  entropy;
     mbedtls_ctr_drbg_context ctr_drbg;
     buffer                   key_buffer;
@@ -110,7 +108,7 @@ private:
 public:
     KeyPair() noexcept {
         mbedtls_ctr_drbg_init(&ctr_drbg);
-        mbedtls_pk_init(&pk);
+        mbedtls_pk_init(&ctx);
         mbedtls_entropy_init(&entropy);
     }
     KeyPair(const KeyPair &) = delete;
@@ -118,97 +116,49 @@ public:
     KeyPair &operator=(const KeyPair &) = delete;
     KeyPair &operator=(KeyPair &&) = delete;
     ~KeyPair() noexcept {
-        mbedtls_pk_free(&pk);
+        mbedtls_pk_free(&ctx);
         mbedtls_ctr_drbg_free(&ctr_drbg);
         mbedtls_entropy_free(&entropy);
     }
-    void setup() {
+    void setup(key_type type = key_type::ECKEY) {
         int ret = 0;
-
         ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, nullptr, 0);
         handle_mbedtls_error(ret);
 
-        ret = mbedtls_pk_setup(&pk, mbedtls_pk_info_from_type(MBEDTLS_PK_RSA));
-        handle_mbedtls_error(ret);
-
-        ret = mbedtls_rsa_gen_key(mbedtls_pk_rsa(pk), mbedtls_ctr_drbg_random, &ctr_drbg, 4096, 65537);
-        handle_mbedtls_error(ret);
+        switch (type) {
+        case key_type::RSA:
+            ret = mbedtls_pk_setup(&ctx, mbedtls_pk_info_from_type(MBEDTLS_PK_RSA));
+            handle_mbedtls_error(ret);
+            ret = mbedtls_rsa_gen_key(mbedtls_pk_rsa(ctx), mbedtls_ctr_drbg_random, &ctr_drbg, 4096, 65537);
+            handle_mbedtls_error(ret);
+            break;
+        case key_type::ECKEY:
+            ret = mbedtls_pk_setup(&ctx, mbedtls_pk_info_from_type(MBEDTLS_PK_ECKEY));
+            handle_mbedtls_error(ret);
+            ret = mbedtls_ecp_gen_key(MBEDTLS_ECP_DP_SECP521R1, mbedtls_pk_ec(ctx), mbedtls_ctr_drbg_random, &ctr_drbg);
+            handle_mbedtls_error(ret);
+            break;
+        default: throw std::runtime_error("wrong key type");
+        }
 
         key_buffer.resize(4096);
     }
     std::string gen_private_key() {
-        int ret = mbedtls_pk_write_key_pem(&pk, key_buffer.data(), key_buffer.size());
+        int ret = mbedtls_pk_write_key_pem(&ctx, key_buffer.data(), key_buffer.size());
         handle_mbedtls_error(ret);
         return reinterpret_cast<char *>(key_buffer.data());
     }
     std::string gen_public_key() {
-        int ret = mbedtls_pk_write_pubkey_pem(&pk, key_buffer.data(), key_buffer.size());
+        int ret = mbedtls_pk_write_pubkey_pem(&ctx, key_buffer.data(), key_buffer.size());
         handle_mbedtls_error(ret);
         return reinterpret_cast<char *>(key_buffer.data());
     }
 };
 
-std::tuple<std::string, std::string> gen_key_pair() {
+std::tuple<std::string, std::string> gen_key_pair(key_type type) {
     KeyPair kp;
-    kp.setup();
+    kp.setup(type);
     return {kp.gen_private_key(), kp.gen_public_key()};
 }
-} // namespace rsa
-
-namespace ecdsa {
-class KeyPair {
-private:
-    mbedtls_pk_context       pk;
-    mbedtls_entropy_context  entropy;
-    mbedtls_ctr_drbg_context ctr_drbg;
-    buffer                   key_buffer;
-
-public:
-    KeyPair() noexcept {
-        mbedtls_pk_init(&pk);
-        mbedtls_ctr_drbg_init(&ctr_drbg);
-        mbedtls_entropy_init(&entropy);
-    }
-    KeyPair(const KeyPair &) = delete;
-    KeyPair(KeyPair &&) = delete;
-    KeyPair &operator=(const KeyPair &) = delete;
-    KeyPair &operator=(KeyPair &&) = delete;
-    ~KeyPair() noexcept {
-        mbedtls_pk_free(&pk);
-        mbedtls_ctr_drbg_free(&ctr_drbg);
-        mbedtls_entropy_free(&entropy);
-    }
-    void setup() {
-        int ret = 0;
-
-        ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, nullptr, 0);
-        handle_mbedtls_error(ret);
-
-        ret = mbedtls_pk_setup(&pk, mbedtls_pk_info_from_type(MBEDTLS_PK_ECKEY));
-        handle_mbedtls_error(ret);
-
-        ret = mbedtls_ecp_gen_key(MBEDTLS_ECP_DP_SECP521R1, mbedtls_pk_ec(pk), mbedtls_ctr_drbg_random, &ctr_drbg);
-        handle_mbedtls_error(ret);
-
-        key_buffer.resize(4096);
-    }
-    std::string gen_private_key() {
-        int ret = mbedtls_pk_write_key_pem(&pk, key_buffer.data(), key_buffer.size());
-        handle_mbedtls_error(ret);
-        return reinterpret_cast<char *>(key_buffer.data());
-    }
-    std::string gen_public_key() {
-        int ret = mbedtls_pk_write_pubkey_pem(&pk, key_buffer.data(), key_buffer.size());
-        handle_mbedtls_error(ret);
-        return reinterpret_cast<char *>(key_buffer.data());
-    }
-};
-
-std::tuple<std::string, std::string> gen_key_pair() {
-    KeyPair kp;
-    kp.setup();
-    return {kp.gen_private_key(), kp.gen_public_key()};
-}
-} // namespace ecdsa
 
 } // namespace keycore::pk
