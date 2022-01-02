@@ -29,9 +29,9 @@ public:
     void load_key(const fs::path &private_keyfile) {
         int err = 0;
         err = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, nullptr, 0);
-        handle_mbedtls_error(err);
+        HANDLE_MBEDTLS_ERROR(err);
         err = mbedtls_pk_parse_keyfile(&pk, private_keyfile.c_str(), nullptr);
-        handle_mbedtls_error(err);
+        HANDLE_MBEDTLS_ERROR(err);
     }
 
     buffer sign(const buffer &content) {
@@ -41,10 +41,10 @@ public:
 
         int err = 0;
         err = mbedtls_md(mbedtls_md_info_from_type(MBEDTLS_MD_SHA256), content.data(), content.size(), hash.data());
-        handle_mbedtls_error(err);
+        HANDLE_MBEDTLS_ERROR(err);
         err = mbedtls_pk_sign(&pk, MBEDTLS_MD_SHA256, hash.data(), 0, signature.data(), &olen, mbedtls_ctr_drbg_random,
                               &ctr_drbg);
-        handle_mbedtls_error(err);
+        HANDLE_MBEDTLS_ERROR(err);
 
         signature.resize(olen);
         signature.shrink_to_fit();
@@ -71,14 +71,14 @@ public:
 
     void load_key(const fs::path &public_keyfile) {
         int err = mbedtls_pk_parse_public_keyfile(&pk, public_keyfile.c_str());
-        handle_mbedtls_error(err);
+        HANDLE_MBEDTLS_ERROR(err);
     }
 
     bool verify(const buffer &content, const buffer &signature) {
         std::array<unsigned char, 32> hash{};
 
         int err = mbedtls_md(mbedtls_md_info_from_type(MBEDTLS_MD_SHA256), content.data(), content.size(), hash.data());
-        handle_mbedtls_error(err);
+        HANDLE_MBEDTLS_ERROR(err);
 
         return (mbedtls_pk_verify(&pk, MBEDTLS_MD_SHA256, hash.data(), 0, signature.data(), signature.size()) == 0);
     }
@@ -123,20 +123,20 @@ public:
     void setup(key_type type = key_type::ECKEY) {
         int ret = 0;
         ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, nullptr, 0);
-        handle_mbedtls_error(ret);
+        HANDLE_MBEDTLS_ERROR(ret);
 
         switch (type) {
         case key_type::RSA:
             ret = mbedtls_pk_setup(&ctx, mbedtls_pk_info_from_type(MBEDTLS_PK_RSA));
-            handle_mbedtls_error(ret);
+            HANDLE_MBEDTLS_ERROR(ret);
             ret = mbedtls_rsa_gen_key(mbedtls_pk_rsa(ctx), mbedtls_ctr_drbg_random, &ctr_drbg, 4096, 65537);
-            handle_mbedtls_error(ret);
+            HANDLE_MBEDTLS_ERROR(ret);
             break;
         case key_type::ECKEY:
             ret = mbedtls_pk_setup(&ctx, mbedtls_pk_info_from_type(MBEDTLS_PK_ECKEY));
-            handle_mbedtls_error(ret);
+            HANDLE_MBEDTLS_ERROR(ret);
             ret = mbedtls_ecp_gen_key(MBEDTLS_ECP_DP_SECP521R1, mbedtls_pk_ec(ctx), mbedtls_ctr_drbg_random, &ctr_drbg);
-            handle_mbedtls_error(ret);
+            HANDLE_MBEDTLS_ERROR(ret);
             break;
         default: throw std::runtime_error("wrong key type");
         }
@@ -145,12 +145,12 @@ public:
     }
     std::string gen_private_key() {
         int ret = mbedtls_pk_write_key_pem(&ctx, key_buffer.data(), key_buffer.size());
-        handle_mbedtls_error(ret);
+        HANDLE_MBEDTLS_ERROR(ret);
         return reinterpret_cast<char *>(key_buffer.data());
     }
     std::string gen_public_key() {
         int ret = mbedtls_pk_write_pubkey_pem(&ctx, key_buffer.data(), key_buffer.size());
-        handle_mbedtls_error(ret);
+        HANDLE_MBEDTLS_ERROR(ret);
         return reinterpret_cast<char *>(key_buffer.data());
     }
 };
