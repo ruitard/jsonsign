@@ -1,4 +1,4 @@
-find_package(CLI11 REQUIRED)
+find_package(CLI11 CONFIG REQUIRED)
 
 find_package(nlohmann_json CONFIG REQUIRED)
 

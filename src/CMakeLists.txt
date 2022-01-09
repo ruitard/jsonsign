@@ -12,5 +12,3 @@ PUBLIC
 )
 
 add_subdirectory(crypto)
-
-target_link_libraries(keycore PRIVATE mbedcrypto)

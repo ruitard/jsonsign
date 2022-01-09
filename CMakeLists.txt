@@ -1,8 +1,12 @@
 cmake_minimum_required(VERSION 3.20.0)
 project(jsign VERSION 1.0.0)
 
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+
 include(CTest)
 enable_testing()
+
+include(FindMbedTLS)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_INSTALL_RPATH "$ORIGIN")

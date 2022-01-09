@@ -30,7 +30,7 @@ public:
         int err = 0;
         err = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, nullptr, 0);
         HANDLE_MBEDTLS_ERROR(err);
-        err = mbedtls_pk_parse_keyfile(&pk, private_keyfile.c_str(), nullptr);
+        err = mbedtls_pk_parse_keyfile(&pk, private_keyfile.string().c_str(), nullptr);
         HANDLE_MBEDTLS_ERROR(err);
     }
 
@@ -70,7 +70,7 @@ public:
     Verifier &operator=(Verifier &&) = delete;
 
     void load_key(const fs::path &public_keyfile) {
-        int err = mbedtls_pk_parse_public_keyfile(&pk, public_keyfile.c_str());
+        int err = mbedtls_pk_parse_public_keyfile(&pk, public_keyfile.string().c_str());
         HANDLE_MBEDTLS_ERROR(err);
     }
 
