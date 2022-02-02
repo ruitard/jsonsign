@@ -55,7 +55,7 @@ static void sign_json_file() {
         std::cout << result << std::endl;
     } else {
         if (std::ofstream ofs(signed_json_file); ofs.is_open()) {
-            ofs.write(result.c_str(), result.length());
+            ofs.write(result.c_str(), static_cast<std::streamsize>(result.length()));
         } else {
             throw std::runtime_error("the signed-json file saved error.");
         }
@@ -81,14 +81,16 @@ int main(int argc, const char *argv[]) {
 
     app.require_subcommand(1, 1);
 
-    auto generate_cmd = app.add_subcommand("generate-key-pair", "Generates a key-pair for signing.");
+    std::string type_string = "ec";
+    auto       *generate_cmd = app.add_subcommand("generate-key-pair", "Generates a key-pair for signing.");
+    generate_cmd->add_option("--type,-t", type_string, "Specify the key type (rsa or ec)");
 
-    auto sign_cmd = app.add_subcommand("sign", "Sign the supplied json file.");
+    auto *sign_cmd = app.add_subcommand("sign", "Sign the supplied json file.");
     sign_cmd->add_option("--key", prikey_file, "Path to the private key file")->required();
     sign_cmd->add_option("-o", signed_json_file, "Specify the signed-json file name");
     sign_cmd->add_option("--file", json_file, "The input json file")->required();
 
-    auto verify_cmd = app.add_subcommand("verify", "Verify signature and annotations on a json.");
+    auto *verify_cmd = app.add_subcommand("verify", "Verify signature and annotations on a json.");
     verify_cmd->add_option("--key", pubkey_file, "Path to the public key file")->required();
     verify_cmd->add_option("--file", signed_json_file, "Path to the signed-json file")->required();
 
@@ -107,13 +109,19 @@ int main(int argc, const char *argv[]) {
     }
 
     if (app.got_subcommand("generate-key-pair")) {
-        const auto &[key, public_key] = keycore::pk::gen_key_pair(keycore::pk::key_type::ECKEY);
+        keycore::pk::key_type keytype = keycore::pk::key_type::NONE;
+        if (type_string == "rsa") {
+            keytype = keycore::pk::key_type::RSA;
+        } else if (type_string == "ec") {
+            keytype = keycore::pk::key_type::ECKEY;
+        }
+        const auto &[key, public_key] = keycore::pk::gen_key_pair(keytype);
         if (std::ofstream ofs{"jsign.key"}; ofs.is_open()) {
-            ofs.write(key.c_str(), key.length());
+            ofs.write(key.c_str(), static_cast<std::streamsize>(key.length()));
             std::cout << "Private key written to jsign.key" << std::endl;
         }
         if (std::ofstream ofs{"jsign.pub"}; ofs.is_open()) {
-            ofs.write(public_key.c_str(), public_key.length());
+            ofs.write(public_key.c_str(), static_cast<std::streamsize>(public_key.length()));
             std::cout << "Public key written to jsign.pub" << std::endl;
         }
     }

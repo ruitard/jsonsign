@@ -7,7 +7,7 @@ namespace keycore {
 
 namespace pk {
 
-enum class key_type { RSA, ECKEY };
+enum class key_type { NONE, RSA, ECKEY };
 
 buffer sign(const buffer &content, const fs::path &keyfile);
 
