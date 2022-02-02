@@ -11,7 +11,7 @@
 
 namespace fs = std::filesystem;
 
-static constexpr std::string_view json_signature_name{"#@signature@#"};
+static constexpr std::string_view json_signature_name{"|signature|"};
 
 static std::string json_file;
 static std::string signed_json_file;

@@ -59,7 +59,7 @@ $ jsign sign --key jsign.key --file license.json
     "issue_date": "2010-12-16",
     "issuing_authority": "sample-license-authority",
     "licensee": "john-citizen",
-    "#@signature@#": "MIGHAkIBwxKw7DB2PqW1gyq3kEbjuqd7LOoQisglTDxYiLmBSHWxNXOGYXfX+7h7iONii+tZXGc0Vl6FD90HW7glGK6E694CQVX4hbXNCh8jLvEn3vhF8NWN1gjsuVXPMaO8+VWJGMH0o+MMIZswIr/BRzaZpLvGAFm5piT1fnKCr4L/Q+CGOZaO"
+    "|signature|": "MIGHAkIBwxKw7DB2PqW1gyq3kEbjuqd7LOoQisglTDxYiLmBSHWxNXOGYXfX+7h7iONii+tZXGc0Vl6FD90HW7glGK6E694CQVX4hbXNCh8jLvEn3vhF8NWN1gjsuVXPMaO8+VWJGMH0o+MMIZswIr/BRzaZpLvGAFm5piT1fnKCr4L/Q+CGOZaO"
 }
 ```
 #### 验证已签名的 json 文件
