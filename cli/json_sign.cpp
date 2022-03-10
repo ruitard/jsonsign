@@ -105,6 +105,7 @@ int main(int argc, const char *argv[]) {
             std::cout << "The signature were verified against the specified public key" << std::endl;
         } else {
             std::cout << "Verify signature failed" << std::endl;
+            return EXIT_FAILURE;
         }
     }
 
