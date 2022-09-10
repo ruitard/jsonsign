@@ -1,7 +1,7 @@
 #include <mbedtls/base64.h>
 
-#include "base64.hpp"
-#include "error.hpp"
+#include "keycore.hpp"
+#include "helper.hpp"
 
 namespace keycore::base64 {
 

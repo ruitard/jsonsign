@@ -4,8 +4,8 @@
 #include <mbedtls/entropy.h>
 #include <mbedtls/ctr_drbg.h>
 
-#include "pk.hpp"
-#include "error.hpp"
+#include "keycore.hpp"
+#include "helper.hpp"
 
 namespace keycore::pk {
 
