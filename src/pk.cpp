@@ -26,17 +26,21 @@ public:
     Signer &operator=(const Signer &) = delete;
     Signer &operator=(Signer &&) = delete;
 
-    void load_key(const std::variant<fs::path, std::string_view> &private_key) {
+    void load_key(const fs::path &private_keyfile) {
         int err = 0;
         err = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, nullptr, 0);
         HANDLE_MBEDTLS_ERROR(err);
-        if (std::holds_alternative<fs::path>(private_key)) {
-            err = mbedtls_pk_parse_keyfile(&pk, std::get<fs::path>(private_key).string().c_str(), nullptr);
-        } else if (std::holds_alternative<std::string_view>(private_key)) {
-            err = mbedtls_pk_parse_key(
-                &pk, reinterpret_cast<const unsigned char *>(std::get<std::string_view>(private_key).data()),
-                std::get<std::string_view>(private_key).length() + 1, nullptr, 0);
-        }
+
+        err = mbedtls_pk_parse_keyfile(&pk, private_keyfile.string().c_str(), nullptr);
+        HANDLE_MBEDTLS_ERROR(err);
+    }
+    void load_key(const std::string_view &private_key) {
+        int err = 0;
+        err = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, nullptr, 0);
+        HANDLE_MBEDTLS_ERROR(err);
+
+        err = mbedtls_pk_parse_key(&pk, reinterpret_cast<const unsigned char *>(private_key.data()),
+                                   private_key.length() + 1, nullptr, 0);
         HANDLE_MBEDTLS_ERROR(err);
     }
 
@@ -75,15 +79,13 @@ public:
     Verifier &operator=(const Verifier &) = delete;
     Verifier &operator=(Verifier &&) = delete;
 
-    void load_key(const std::variant<fs::path, std::string_view> &public_key) {
-        int err = 0;
-        if (std::holds_alternative<fs::path>(public_key)) {
-            err = mbedtls_pk_parse_public_keyfile(&pk, std::get<fs::path>(public_key).string().c_str());
-        } else if (std::holds_alternative<std::string_view>(public_key)) {
-            err = mbedtls_pk_parse_public_key(
-                &pk, reinterpret_cast<const unsigned char *>(std::get<std::string_view>(public_key).data()),
-                std::get<std::string_view>(public_key).length() + 1);
-        }
+    void load_key(const fs::path &public_keyfile) {
+        int err = mbedtls_pk_parse_public_keyfile(&pk, public_keyfile.string().c_str());
+        HANDLE_MBEDTLS_ERROR(err);
+    }
+    void load_key(const std::string_view &public_key) {
+        int err = mbedtls_pk_parse_public_key(&pk, reinterpret_cast<const unsigned char *>(public_key.data()),
+                                              public_key.length() + 1);
         HANDLE_MBEDTLS_ERROR(err);
     }
 
@@ -99,15 +101,25 @@ public:
     ~Verifier() noexcept { mbedtls_pk_free(&pk); }
 };
 
-buffer sign(const buffer &content, const std::variant<fs::path, std::string_view> &key) {
+buffer sign(const buffer &content, const fs::path &key_file) {
+    Signer signer;
+    signer.load_key(key_file);
+    return signer.sign(content);
+}
+buffer sign(const buffer &content, const std::string_view &key) {
     Signer signer;
     signer.load_key(key);
     return signer.sign(content);
 }
 
-bool verify(const buffer &content, const buffer &signature, const std::variant<fs::path, std::string_view> &key) {
+bool verify(const buffer &content, const buffer &signature, const std::string_view &key) {
     Verifier verifier;
     verifier.load_key(key);
+    return verifier.verify(content, signature);
+}
+bool verify(const buffer &content, const buffer &signature, const fs::path &key_file) {
+    Verifier verifier;
+    verifier.load_key(key_file);
     return verifier.verify(content, signature);
 }
 
