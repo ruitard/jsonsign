@@ -26,11 +26,17 @@ public:
     Signer &operator=(const Signer &) = delete;
     Signer &operator=(Signer &&) = delete;
 
-    void load_key(const fs::path &private_keyfile) {
+    void load_key(const std::variant<fs::path, std::string_view> &private_key) {
         int err = 0;
         err = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, nullptr, 0);
         HANDLE_MBEDTLS_ERROR(err);
-        err = mbedtls_pk_parse_keyfile(&pk, private_keyfile.string().c_str(), nullptr);
+        if (std::holds_alternative<fs::path>(private_key)) {
+            err = mbedtls_pk_parse_keyfile(&pk, std::get<fs::path>(private_key).string().c_str(), nullptr);
+        } else if (std::holds_alternative<std::string_view>(private_key)) {
+            err = mbedtls_pk_parse_key(
+                &pk, reinterpret_cast<const unsigned char *>(std::get<std::string_view>(private_key).data()),
+                std::get<std::string_view>(private_key).length() + 1, nullptr, 0);
+        }
         HANDLE_MBEDTLS_ERROR(err);
     }
 
@@ -69,8 +75,15 @@ public:
     Verifier &operator=(const Verifier &) = delete;
     Verifier &operator=(Verifier &&) = delete;
 
-    void load_key(const fs::path &public_keyfile) {
-        int err = mbedtls_pk_parse_public_keyfile(&pk, public_keyfile.string().c_str());
+    void load_key(const std::variant<fs::path, std::string_view> &public_key) {
+        int err = 0;
+        if (std::holds_alternative<fs::path>(public_key)) {
+            err = mbedtls_pk_parse_public_keyfile(&pk, std::get<fs::path>(public_key).string().c_str());
+        } else if (std::holds_alternative<std::string_view>(public_key)) {
+            err = mbedtls_pk_parse_public_key(
+                &pk, reinterpret_cast<const unsigned char *>(std::get<std::string_view>(public_key).data()),
+                std::get<std::string_view>(public_key).length() + 1);
+        }
         HANDLE_MBEDTLS_ERROR(err);
     }
 
@@ -86,15 +99,15 @@ public:
     ~Verifier() noexcept { mbedtls_pk_free(&pk); }
 };
 
-buffer sign(const buffer &content, const fs::path &private_keyfile) {
+buffer sign(const buffer &content, const std::variant<fs::path, std::string_view> &key) {
     Signer signer;
-    signer.load_key(private_keyfile);
+    signer.load_key(key);
     return signer.sign(content);
 }
 
-bool verify(const buffer &content, const buffer &signature, const fs::path &public_keyfile) {
+bool verify(const buffer &content, const buffer &signature, const std::variant<fs::path, std::string_view> &key) {
     Verifier verifier;
-    verifier.load_key(public_keyfile);
+    verifier.load_key(key);
     return verifier.verify(content, signature);
 }
 

@@ -39,6 +39,16 @@ static keycore::buffer json_content_join(const nlohmann::ordered_json &json_root
     return {content.begin(), content.end()};
 }
 
+[[maybe_unused]] static std::string file_content(const fs::path &path) {
+    auto        file_size = fs::file_size(path);
+    std::string content;
+    if (std::ifstream ifs(path, std::ios::binary); ifs.is_open()) {
+        content.resize(file_size);
+        ifs.read(content.data(), static_cast<std::streamsize>(file_size));
+    }
+    return content;
+}
+
 static void sign_json_file() {
     fs::path prikey{prikey_file};
     require(fs::is_regular_file(prikey), "the key file not exist");

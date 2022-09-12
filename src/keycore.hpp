@@ -3,6 +3,8 @@
 #include <vector>
 #include <tuple>
 #include <filesystem>
+#include <string_view>
+#include <variant>
 
 namespace keycore {
 
@@ -13,9 +15,9 @@ namespace pk {
 
 enum class key_type { NONE, RSA, ECKEY };
 
-buffer sign(const buffer &content, const fs::path &keyfile);
+buffer sign(const buffer &content, const std::variant<fs::path, std::string_view> &key);
 
-bool verify(const buffer &content, const buffer &signature, const fs::path &public_keyfile);
+bool verify(const buffer &content, const buffer &signature, const std::variant<fs::path, std::string_view> &key);
 
 std::tuple<std::string, std::string> gen_key_pair(key_type type = key_type::ECKEY);
 
