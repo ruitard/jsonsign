@@ -50,16 +50,16 @@ static keycore::buffer json_content_join(const nlohmann::ordered_json &json_root
 }
 
 static void sign_json_file() {
-    fs::path prikey{prikey_file};
+    const fs::path prikey{prikey_file};
     require(fs::is_regular_file(prikey), "the key file not exist");
 
     parse_json_file(json_file);
     require(!root.contains(json_signature_name), "the json file already has a signature");
 
-    keycore::buffer content = json_content_join(root);
+    const keycore::buffer content = json_content_join(root);
 
-    keycore::buffer signature = keycore::base64::encode(keycore::pk::sign(content, prikey));
-    root[json_signature_name] = std::string(reinterpret_cast<char *>(signature.data()), signature.size());
+    const keycore::buffer signature = keycore::base64::encode(keycore::pk::sign(content, prikey));
+    root[json_signature_name] = std::string_view(reinterpret_cast<const char *>(signature.data()), signature.size());
     const auto result = root.dump(4);
     if (signed_json_file.empty()) {
         std::cout << result << std::endl;
@@ -73,14 +73,14 @@ static void sign_json_file() {
 }
 
 static bool verify_json_file() {
-    fs::path pubkey{pubkey_file};
+    const fs::path pubkey{pubkey_file};
     require(fs::is_regular_file(pubkey), "the key file not exist");
 
     parse_json_file(signed_json_file);
     require(root.contains(json_signature_name), "the json file doesn't have a signature");
-    std::string signature = root[json_signature_name];
+    const std::string signature = root[json_signature_name];
     root.erase(json_signature_name);
-    keycore::buffer content = json_content_join(root);
+    const keycore::buffer content = json_content_join(root);
 
     return keycore::pk::verify(content, keycore::base64::decode(keycore::buffer(signature.begin(), signature.end())),
                                pubkey);
