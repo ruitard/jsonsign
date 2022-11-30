@@ -11,4 +11,4 @@ PRIVATE
     nlohmann_json::nlohmann_json
 )
 
-install(TARGETS jsign)
+install(TARGETS jsign DESTINATION .)
