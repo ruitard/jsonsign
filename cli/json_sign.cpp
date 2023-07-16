@@ -13,20 +13,22 @@ namespace fs = std::filesystem;
 
 static constexpr std::string_view json_signature_name{"|signature|"};
 
-static std::string json_file;
-static std::string signed_json_file;
-static std::string pubkey_file;
-static std::string prikey_file;
+namespace {
 
-static nlohmann::ordered_json root;
+std::string json_file;
+std::string signed_json_file;
+std::string pubkey_file;
+std::string prikey_file;
 
-static inline void require(bool flag, const std::string &message) {
+nlohmann::ordered_json root;
+
+inline void require(bool flag, const std::string &message) {
     if (!flag) {
         throw std::runtime_error(message);
     }
 }
 
-static inline void parse_json_file(const std::string &jsonfile) {
+inline void parse_json_file(const std::string &jsonfile) {
     if (std::ifstream ifs{jsonfile}; ifs.is_open()) {
         root = nlohmann::json::parse(ifs);
     } else {
@@ -34,12 +36,12 @@ static inline void parse_json_file(const std::string &jsonfile) {
     }
 }
 
-static keycore::buffer json_content_join(const nlohmann::ordered_json &json_root) {
+keycore::buffer json_content_join(const nlohmann::ordered_json &json_root) {
     std::string content = json_root.dump();
     return {content.begin(), content.end()};
 }
 
-[[maybe_unused]] static std::string file_content(const fs::path &path) {
+[[maybe_unused]] std::string file_content(const fs::path &path) {
     auto        file_size = fs::file_size(path);
     std::string content;
     if (std::ifstream ifs(path, std::ios::binary); ifs.is_open()) {
@@ -49,7 +51,7 @@ static keycore::buffer json_content_join(const nlohmann::ordered_json &json_root
     return content;
 }
 
-static void sign_json_file() {
+void sign_json_file() {
     const fs::path prikey{prikey_file};
     require(fs::is_regular_file(prikey), "the key file not exist");
 
@@ -72,7 +74,7 @@ static void sign_json_file() {
     }
 }
 
-static bool verify_json_file() {
+bool verify_json_file() {
     const fs::path pubkey{pubkey_file};
     require(fs::is_regular_file(pubkey), "the key file not exist");
 
@@ -85,6 +87,8 @@ static bool verify_json_file() {
     return keycore::pk::verify(content, keycore::base64::decode(keycore::buffer(signature.begin(), signature.end())),
                                pubkey);
 }
+
+} // namespace
 
 int main(int argc, const char *argv[]) {
     CLI::App app{"A tool for Json File Signing, Verification."};
