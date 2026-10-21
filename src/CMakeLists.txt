@@ -1,4 +1,4 @@
-find_package(MbedTLS REQUIRED)
+find_package(MbedTLS CONFIG REQUIRED)
 
 add_library(keycore)
 

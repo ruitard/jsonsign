@@ -31,7 +31,8 @@ public:
         err = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, nullptr, 0);
         HANDLE_MBEDTLS_ERROR(err);
 
-        err = mbedtls_pk_parse_keyfile(&pk, private_keyfile.string().c_str(), nullptr);
+        err = mbedtls_pk_parse_keyfile(&pk, private_keyfile.string().c_str(), nullptr, mbedtls_ctr_drbg_random,
+                                       &ctr_drbg);
         HANDLE_MBEDTLS_ERROR(err);
     }
     void load_key(const std::string_view &private_key) {
@@ -40,7 +41,7 @@ public:
         HANDLE_MBEDTLS_ERROR(err);
 
         err = mbedtls_pk_parse_key(&pk, reinterpret_cast<const unsigned char *>(private_key.data()),
-                                   private_key.length() + 1, nullptr, 0);
+                                   private_key.length() + 1, nullptr, 0, mbedtls_ctr_drbg_random, &ctr_drbg);
         HANDLE_MBEDTLS_ERROR(err);
     }
 
@@ -52,8 +53,8 @@ public:
         int err = 0;
         err = mbedtls_md(mbedtls_md_info_from_type(MBEDTLS_MD_SHA256), content.data(), content.size(), hash.data());
         HANDLE_MBEDTLS_ERROR(err);
-        err = mbedtls_pk_sign(&pk, MBEDTLS_MD_SHA256, hash.data(), 0, signature.data(), &olen, mbedtls_ctr_drbg_random,
-                              &ctr_drbg);
+        err = mbedtls_pk_sign(&pk, MBEDTLS_MD_SHA256, hash.data(), hash.size(), signature.data(), signature.size(),
+                              &olen, mbedtls_ctr_drbg_random, &ctr_drbg);
         HANDLE_MBEDTLS_ERROR(err);
 
         signature.resize(olen);

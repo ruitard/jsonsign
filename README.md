@@ -13,21 +13,40 @@ A tool for Json File Signing, Verification.
 
 ## 构建方式
 ### 编译环境要求
-- 编译器需要支持 C++20
+- 支持 C++20 的编译器
+- CMake >= 3.24、Ninja、Git 和 vcpkg
 ### 第三方依赖库
-- [MbedTLS](https://github.com/ARMmbed/mbedtls)
+- [MbedTLS](https://github.com/Mbed-TLS/mbedtls)
 - [nlohmann-json](https://github.com/nlohmann/json)
 - [CLI11](https://github.com/CLIUtils/CLI11)
-### 使用 CMake 构建
-使用 [vcpkg](https://github.com/microsoft/vcpkg) 安装第三方依赖库
-```shell
-$ vcpkg install mbedtls cli11 nlohmann-json
-```
-编译
-```shell
-$ cmake -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_TOOLCHAIN_FILE=/path/to/vcpkg/scripts/buildsystems/vcpkg.cmake .
 
-$ cmake --build build --target install --config RelWithDebInfo --parallel $(nproc)
+### 使用 CMake 构建
+设置已有的 [vcpkg](https://github.com/microsoft/vcpkg) 路径；CMake 配置时会自动安装清单中的依赖：
+```shell
+export VCPKG_ROOT=/path/to/vcpkg
+cmake --preset dev
+cmake --build --preset dev --parallel
+ctest --preset dev
+./build/dev/cli/jsign --help
+```
+
+发布构建和本地安装：
+```shell
+cmake --preset release
+cmake --build --preset release --parallel
+ctest --preset release
+cmake --install build/release
+./build/release/installed/jsign --help
+```
+
+两个预设共用 `build/vcpkg_installed` 中的依赖，调试构建导出 `compile_commands.json`。
+
+也可直接配置 CMake（Windows 可使用此方式选择 Visual Studio 生成器）：
+```shell
+cmake -S . -B build/manual -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+  -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+cmake --build build/manual --config RelWithDebInfo --parallel
+ctest --test-dir build/manual -C RelWithDebInfo --output-on-failure
 ```
 ### 快速上手
 `jsign` 主要有三个功能：
