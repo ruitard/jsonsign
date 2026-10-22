@@ -1,13 +1,12 @@
 #include <iostream>
 #include <fstream>
-#include <iomanip>
 
-#include <CLI/App.hpp>
-#include <CLI/Config.hpp>
-#include <CLI/Formatter.hpp>
+#include <CLI/CLI.hpp>
 #include <nlohmann/json.hpp>
 
 #include "keycore.hpp"
+#include "secure_io.hpp"
+#include "passphrase.hpp"
 
 namespace fs = std::filesystem;
 
@@ -19,6 +18,8 @@ std::string json_file;
 std::string signed_json_file;
 std::string pubkey_file;
 std::string prikey_file;
+std::string passphrase_file;
+int passphrase_fd = -1;
 
 nlohmann::ordered_json root;
 
@@ -40,17 +41,6 @@ keycore::buffer json_content_join(const nlohmann::ordered_json &json_root) {
     std::string content = json_root.dump();
     return {content.begin(), content.end()};
 }
-
-[[maybe_unused]] std::string file_content(const fs::path &path) {
-    auto        file_size = fs::file_size(path);
-    std::string content;
-    if (std::ifstream ifs(path, std::ios::binary); ifs.is_open()) {
-        content.resize(file_size);
-        ifs.read(content.data(), static_cast<std::streamsize>(file_size));
-    }
-    return content;
-}
-
 void sign_json_file() {
     const fs::path prikey{prikey_file};
     require(fs::is_regular_file(prikey), "the key file not exist");
@@ -60,7 +50,20 @@ void sign_json_file() {
 
     const keycore::buffer content = json_content_join(root);
 
-    const keycore::buffer signature = keycore::base64::encode(keycore::pk::sign(content, prikey));
+    keycore::secure_buffer password;
+    if (!passphrase_file.empty() || passphrase_fd >= 0) {
+        password = read_passphrase(passphrase_file, passphrase_fd);
+    }
+    keycore::buffer raw_signature;
+    try {
+        raw_signature = keycore::pk::sign(content, prikey, password.view());
+    } catch (const keycore::pk::password_required &) {
+        if (!password.empty()) throw;
+        password = read_passphrase({}, -1);
+        raw_signature = keycore::pk::sign(content, prikey, password.view());
+    }
+    password.clear();
+    const keycore::buffer signature = keycore::base64::encode(raw_signature);
     root[json_signature_name] = std::string_view(reinterpret_cast<const char *>(signature.data()), signature.size());
     const auto result = root.dump(4);
     if (signed_json_file.empty()) {
@@ -90,14 +93,26 @@ bool verify_json_file() {
 
 } // namespace
 
-int main(int argc, const char *argv[]) {
+int run(int argc, const char *argv[]) {
     CLI::App app{"A tool for Json File Signing, Verification."};
 
     app.require_subcommand(1, 1);
 
     std::string type_string = "ec";
     auto       *generate_cmd = app.add_subcommand("generate-key-pair", "Generates a key-pair for signing.");
-    generate_cmd->add_option("--type,-t", type_string, "Specify the key type (rsa or ec)");
+    generate_cmd->add_option("--type,-t", type_string, "Specify the key type (rsa or ec)")
+        ->check(CLI::IsMember({"rsa", "ec"}));
+    bool no_passphrase = false;
+    std::string private_output = "jsign.key";
+    std::string public_output = "jsign.pub";
+    generate_cmd->add_flag("--no-passphrase", no_passphrase, "Explicitly generate an unencrypted private key");
+    generate_cmd->add_option("--private-key", private_output, "Private key output path");
+    generate_cmd->add_option("--public-key", public_output, "Public key output path");
+
+    std::string encrypted_output;
+    auto *encrypt_cmd = app.add_subcommand("encrypt-key", "Encrypt an existing unencrypted private key.");
+    encrypt_cmd->add_option("--key", prikey_file, "Input private key")->required();
+    encrypt_cmd->add_option("--output,-o", encrypted_output, "Encrypted private key output path")->required();
 
     auto *sign_cmd = app.add_subcommand("sign", "Sign the supplied json file.");
     sign_cmd->add_option("--key", prikey_file, "Path to the private key file")->required();
@@ -108,7 +123,21 @@ int main(int argc, const char *argv[]) {
     verify_cmd->add_option("--key", pubkey_file, "Path to the public key file")->required();
     verify_cmd->add_option("--file", signed_json_file, "Path to the signed-json file")->required();
 
+    for (auto *command : {generate_cmd, sign_cmd, encrypt_cmd}) {
+        auto *file_option = command->add_option("--passphrase-file", passphrase_file,
+            "Read the passphrase from the first line of a protected file");
+        auto *fd_option = command->add_option("--passphrase-fd", passphrase_fd,
+            "Read the passphrase from a file descriptor")->check(CLI::NonNegativeNumber);
+        file_option->excludes(fd_option);
+        if (command == generate_cmd) {
+            file_option->excludes("--no-passphrase");
+            fd_option->excludes("--no-passphrase");
+        }
+    }
+
     CLI11_PARSE(app, argc, argv);
+
+    if (!app.got_subcommand("verify")) keycore::disable_process_dumps();
 
     if (app.got_subcommand("sign")) {
         sign_json_file();
@@ -124,22 +153,40 @@ int main(int argc, const char *argv[]) {
     }
 
     if (app.got_subcommand("generate-key-pair")) {
-        keycore::pk::key_type keytype = keycore::pk::key_type::NONE;
-        if (type_string == "rsa") {
-            keytype = keycore::pk::key_type::RSA;
-        } else if (type_string == "ec") {
-            keytype = keycore::pk::key_type::ECKEY;
-        }
-        const auto &[key, public_key] = keycore::pk::gen_key_pair(keytype);
-        if (std::ofstream ofs{"jsign.key"}; ofs.is_open()) {
-            ofs.write(key.c_str(), static_cast<std::streamsize>(key.length()));
-            std::cout << "Private key written to jsign.key" << std::endl;
-        }
-        if (std::ofstream ofs{"jsign.pub"}; ofs.is_open()) {
-            ofs.write(public_key.c_str(), static_cast<std::streamsize>(public_key.length()));
-            std::cout << "Public key written to jsign.pub" << std::endl;
-        }
+        require(!fs::exists(private_output) && !fs::exists(public_output), "Key output files already exist");
+        require(fs::absolute(private_output).lexically_normal() != fs::absolute(public_output).lexically_normal(),
+                "Private and public key output paths must differ");
+        keycore::secure_buffer password;
+        if (!no_passphrase) password = read_passphrase(passphrase_file, passphrase_fd, true);
+        const auto keytype = type_string == "rsa" ? keycore::pk::key_type::RSA : keycore::pk::key_type::ECKEY;
+        auto [key, public_key] = keycore::pk::gen_key_pair(keytype, password.view());
+        password.clear();
+        keycore::write_key_file(private_output, key.view());
+        key.clear();
+        keycore::write_key_file(public_output, public_key, false);
+        std::cout << "Private key written to " << private_output << '\n';
+        std::cout << "Public key written to " << public_output << '\n';
+    }
+
+    if (app.got_subcommand("encrypt-key")) {
+        require(!fs::exists(encrypted_output), "Key output file already exists");
+        auto password = read_passphrase(passphrase_file, passphrase_fd, true);
+        auto input = keycore::read_secret_file(prikey_file);
+        auto encrypted = keycore::pk::encrypt_private_key(input.view(), password.view());
+        input.clear();
+        password.clear();
+        keycore::write_key_file(encrypted_output, encrypted.view());
+        std::cout << "Encrypted private key written to " << encrypted_output << '\n';
     }
 
     return 0;
+}
+
+int main(int argc, const char *argv[]) {
+    try {
+        return run(argc, argv);
+    } catch (const std::exception &error) {
+        std::cerr << "Error: " << error.what() << '\n';
+        return EXIT_FAILURE;
+    }
 }

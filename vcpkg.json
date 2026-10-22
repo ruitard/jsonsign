@@ -3,9 +3,11 @@
   "version-string": "1.0.0",
   "builtin-baseline": "9eec002df1cd109f8f104cd966a763daf9751489",
   "dependencies": [
+    "libsodium",
     {
       "name": "mbedtls",
-      "version>=": "3.6.5#1"
+      "version>=": "3.6.5#1",
+      "features": ["pthreads"]
     },
     {
       "name": "cli11",

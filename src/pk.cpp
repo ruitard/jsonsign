@@ -6,6 +6,9 @@
 
 #include "keycore.hpp"
 #include "helper.hpp"
+#include "pkcs8.hpp"
+#include "secure_io.hpp"
+#include "secure_call.hpp"
 
 namespace keycore::pk {
 
@@ -16,7 +19,8 @@ private:
     mbedtls_ctr_drbg_context ctr_drbg;
 
 public:
-    Signer() noexcept {
+    Signer() {
+        initialize_secure_memory();
         mbedtls_pk_init(&pk);
         mbedtls_entropy_init(&entropy);
         mbedtls_ctr_drbg_init(&ctr_drbg);
@@ -26,23 +30,27 @@ public:
     Signer &operator=(const Signer &) = delete;
     Signer &operator=(Signer &&) = delete;
 
-    void load_key(const fs::path &private_keyfile) {
-        int err = 0;
-        err = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, nullptr, 0);
-        HANDLE_MBEDTLS_ERROR(err);
-
-        err = mbedtls_pk_parse_keyfile(&pk, private_keyfile.string().c_str(), nullptr, mbedtls_ctr_drbg_random,
-                                       &ctr_drbg);
-        HANDLE_MBEDTLS_ERROR(err);
+    void load_key(const fs::path &private_keyfile, std::string_view password) {
+        auto key = read_secret_file(private_keyfile);
+        load_key(key.view(), password);
     }
-    void load_key(const std::string_view &private_key) {
-        int err = 0;
-        err = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, nullptr, 0);
-        HANDLE_MBEDTLS_ERROR(err);
+    void load_key(std::string_view private_key, std::string_view password) {
+        secure_buffer key(private_key);
+        secure_buffer passphrase(password);
+        HANDLE_MBEDTLS_ERROR(mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, nullptr, 0));
+        const auto *pwd = passphrase.empty() ? nullptr : passphrase.data();
+        const auto key_size = key.size() + (key.view().starts_with("-----BEGIN ") ? 1 : 0);
+        const int result = mbedtls_pk_parse_key(&pk, key.data(), key_size, pwd, passphrase.size(),
+                                                mbedtls_ctr_drbg_random, &ctr_drbg);
+        if (result == MBEDTLS_ERR_PK_PASSWORD_REQUIRED) {
+            throw password_required();
+        }
+        HANDLE_MBEDTLS_ERROR(result);
+    }
 
-        err = mbedtls_pk_parse_key(&pk, reinterpret_cast<const unsigned char *>(private_key.data()),
-                                   private_key.length() + 1, nullptr, 0, mbedtls_ctr_drbg_random, &ctr_drbg);
-        HANDLE_MBEDTLS_ERROR(err);
+    secure_buffer encrypt(std::string_view password) {
+        if (password.empty()) throw std::runtime_error("An encryption passphrase is required");
+        return export_private_key(pk, password, ctr_drbg);
     }
 
     buffer sign(const buffer &content) {
@@ -74,7 +82,10 @@ private:
     mbedtls_pk_context pk;
 
 public:
-    Verifier() noexcept { mbedtls_pk_init(&pk); }
+    Verifier() {
+        initialize_secure_memory();
+        mbedtls_pk_init(&pk);
+    }
     Verifier(const Verifier &) = delete;
     Verifier(Verifier &&) = delete;
     Verifier &operator=(const Verifier &) = delete;
@@ -85,8 +96,9 @@ public:
         HANDLE_MBEDTLS_ERROR(err);
     }
     void load_key(const std::string_view &public_key) {
-        int err = mbedtls_pk_parse_public_key(&pk, reinterpret_cast<const unsigned char *>(public_key.data()),
-                                              public_key.length() + 1);
+        const std::string key(public_key);
+        const auto size = key.size() + (key.starts_with("-----BEGIN ") ? 1 : 0);
+        int err = mbedtls_pk_parse_public_key(&pk, reinterpret_cast<const unsigned char *>(key.data()), size);
         HANDLE_MBEDTLS_ERROR(err);
     }
 
@@ -102,15 +114,19 @@ public:
     ~Verifier() noexcept { mbedtls_pk_free(&pk); }
 };
 
-buffer sign(const buffer &content, const fs::path &key_file) {
-    Signer signer;
-    signer.load_key(key_file);
-    return signer.sign(content);
+buffer sign(const buffer &content, const fs::path &key_file, std::string_view password) {
+    return detail::secure_call([&] {
+        Signer signer;
+        signer.load_key(key_file, password);
+        return signer.sign(content);
+    });
 }
-buffer sign(const buffer &content, const std::string_view &key) {
-    Signer signer;
-    signer.load_key(key);
-    return signer.sign(content);
+buffer sign(const buffer &content, const std::string_view &key, std::string_view password) {
+    return detail::secure_call([&] {
+        Signer signer;
+        signer.load_key(key, password);
+        return signer.sign(content);
+    });
 }
 
 bool verify(const buffer &content, const buffer &signature, const std::string_view &key) {
@@ -129,10 +145,10 @@ private:
     mbedtls_pk_context       ctx;
     mbedtls_entropy_context  entropy;
     mbedtls_ctr_drbg_context ctr_drbg;
-    buffer                   key_buffer;
 
 public:
-    KeyPair() noexcept {
+    KeyPair() {
+        initialize_secure_memory();
         mbedtls_ctr_drbg_init(&ctr_drbg);
         mbedtls_pk_init(&ctx);
         mbedtls_entropy_init(&entropy);
@@ -166,25 +182,31 @@ public:
             break;
         default: throw std::runtime_error("wrong key type");
         }
-
-        key_buffer.resize(4096);
     }
-    std::string gen_private_key() {
-        int ret = mbedtls_pk_write_key_pem(&ctx, key_buffer.data(), key_buffer.size());
-        HANDLE_MBEDTLS_ERROR(ret);
-        return reinterpret_cast<char *>(key_buffer.data());
+    secure_buffer gen_private_key(std::string_view password) {
+        return export_private_key(ctx, password, ctr_drbg);
     }
     std::string gen_public_key() {
-        int ret = mbedtls_pk_write_pubkey_pem(&ctx, key_buffer.data(), key_buffer.size());
-        HANDLE_MBEDTLS_ERROR(ret);
-        return reinterpret_cast<char *>(key_buffer.data());
+        buffer key_buffer(4096);
+        HANDLE_MBEDTLS_ERROR(mbedtls_pk_write_pubkey_pem(&ctx, key_buffer.data(), key_buffer.size()));
+        return reinterpret_cast<const char *>(key_buffer.data());
     }
 };
 
-std::tuple<std::string, std::string> gen_key_pair(key_type type) {
-    KeyPair kp;
-    kp.setup(type);
-    return {kp.gen_private_key(), kp.gen_public_key()};
+std::tuple<secure_buffer, std::string> gen_key_pair(key_type type, std::string_view password) {
+    return detail::secure_call([&]() -> std::tuple<secure_buffer, std::string> {
+        KeyPair kp;
+        kp.setup(type);
+        return {kp.gen_private_key(password), kp.gen_public_key()};
+    });
+}
+
+secure_buffer encrypt_private_key(std::string_view key, std::string_view password) {
+    return detail::secure_call([&] {
+        Signer signer;
+        signer.load_key(key, {});
+        return signer.encrypt(password);
+    });
 }
 
 } // namespace keycore::pk

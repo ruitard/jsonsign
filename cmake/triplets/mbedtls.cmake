@@ -1,0 +1,12 @@
+list(APPEND VCPKG_HASH_ADDITIONAL_FILES "${CMAKE_CURRENT_LIST_FILE}")
+
+if(PORT STREQUAL "mbedtls")
+    list(APPEND VCPKG_CMAKE_CONFIGURE_OPTIONS
+        "-DMBEDTLS_USER_CONFIG_FILE:STRING=jsonsign_mbedtls_config.h")
+    string(APPEND VCPKG_C_FLAGS " -I\"${CMAKE_CURRENT_LIST_DIR}\"")
+    string(APPEND VCPKG_CXX_FLAGS " -I\"${CMAKE_CURRENT_LIST_DIR}\"")
+    list(APPEND VCPKG_HASH_ADDITIONAL_FILES
+        "${CMAKE_CURRENT_LIST_DIR}/jsonsign_mbedtls_config.h")
+    list(APPEND VCPKG_POST_PORTFILE_INCLUDES
+        "${CMAKE_CURRENT_LIST_DIR}/install-mbedtls-config.cmake")
+endif()

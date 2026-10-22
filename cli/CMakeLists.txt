@@ -2,7 +2,7 @@ find_package(CLI11 CONFIG REQUIRED)
 
 find_package(nlohmann_json CONFIG REQUIRED)
 
-add_executable(jsign json_sign.cpp)
+add_executable(jsign json_sign.cpp passphrase.cpp passphrase.hpp)
 
 target_link_libraries(jsign
 PRIVATE
